@@ -15,7 +15,7 @@ repositorio **nao o altera** — apenas le o estado dele.
 | `/` | Visao geral: status do servico e commit no ar, prontidao, **alertas**, tempo de resposta, aprovacoes pendentes, tarefas e mensagens recentes, logs |
 | `/fila` | **Fila e entregas:** alertas, tempo de resposta (fila, Hermes, envio), mensagens esperando, saidas com filtro por status |
 | `/servico` | Estado do `n8n/worki-agent` no EasyPanel, **versao no ar (commit)**, resposta do `/health` e do `/ready` (banco e worker), parametros do worker, logs |
-| `/conversas` | Conversas, sessao do Hermes vinculada, mensagens e tarefas por conversa |
+| `/conversas` | Conversas, sessao do Hermes vinculada, **conversa dos dois lados** (voce e o agente) e tarefas por conversa |
 | `/tarefas` | Tarefas por status, etapas, checkpoint, proxima acao e resultado |
 | `/aprovacoes` | Acoes aguardando confirmacao, com aprovacao por palavra |
 | `/memorias` | Conhecimento acumulado, isolado por proprietario e projeto |
@@ -23,6 +23,17 @@ repositorio **nao o altera** — apenas le o estado dele.
 
 Filtros disponiveis: conversa, projeto, status e periodo. Todos via `GET`, o
 que mantem o estado na URL e as paginas inteiramente server-side.
+
+### Visual e paginacao
+
+Tema escuro (fundo azul-marinho profundo, acento dourado). Toda lista com mais
+de 10 linhas e **paginada de 10 em 10** (`?pagina=2`; listas com mais de uma por
+tela usam `p_tarefas`, `p_saidas`, `p_tempos`, `p_espera`, `p_etapas`,
+`p_parametros`). A paginacao divide o que ja foi carregado — cada consulta tem
+um teto (100 a 300 linhas); ao atingi-lo o rodape avisa. Os filtros sao
+mantidos ao trocar de pagina.
+
+A revisao de UX de cada tela e coluna esta em [`docs/ux-auditoria.md`](docs/ux-auditoria.md).
 
 ---
 
@@ -136,7 +147,7 @@ nao vazam para a tela.
 | Intervalo da fila, limite por pedido, atalho, divisao de mensagens | Tabela "Parametros do worker" em `/servico` |
 
 Tempo de resposta = espera na fila + tempo do Hermes + envio. A mediana e o
-percentil 90 usam as ultimas 20 mensagens.
+percentil 90 usam as ultimas 50 mensagens.
 
 ---
 
@@ -181,7 +192,7 @@ de login explica o que falta em vez de mostrar erro 500.
 ## Testes
 
 ```bash
-npm test          # 84 testes
+npm test          # 116 testes (110 sem build: 6 do bundle sao ignorados)
 npm run typecheck # tsc --noEmit
 npm run build     # build de producao
 ```
@@ -196,7 +207,9 @@ Cobertura:
 | `testes/segredos.test.ts` | Segredo ausente do bundle, separacao de modulos, EasyPanel somente leitura |
 | `testes/somente-leitura.test.ts` | Nenhuma escrita no banco alem de aprovar; nenhuma RPC de manutencao da fila |
 | `testes/fila.test.ts` | Tempos (fila, Hermes, envio), mediana e p90, saidas paradas, espera normal x travamento, alertas |
-| `testes/servico.test.ts` | Commit implantado e parametros do worker; nenhum segredo do env na saida |
+| `testes/servico.test.ts` | Commit implantado e parametros do worker; nenhum segredo do env na saida; erro do EasyPanel traduzido |
+| `testes/paginacao.test.ts` | Fatiamento, pagina fora do limite, reticencias, links que preservam filtros |
+| `testes/exibicao.test.ts` | Linha do tempo dos dois lados, rotulo do proprietario, alerta falso de status |
 
 Para verificar segredos no bundle de verdade, faca o build antes:
 

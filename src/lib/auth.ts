@@ -101,10 +101,10 @@ export async function exigirAcesso(caminho = "/login"): Promise<Usuario> {
 export function mensagemDeRecusa(motivo: MotivoRecusa): string {
   switch (motivo) {
     case "sem-sessao":
-      return "Faca login para acessar o painel.";
+      return "Faça login para acessar o painel.";
     case "sem-email":
-      return "Sua conta do Supabase nao tem e-mail. Cadastre-o antes de entrar.";
+      return "Sua conta do Supabase não tem e-mail. Cadastre-o antes de entrar.";
     case "fora-da-allowlist":
-      return "Seu e-mail nao esta na lista de acesso do painel.";
+      return "Seu e-mail não está na lista de acesso do painel.";
   }
 }

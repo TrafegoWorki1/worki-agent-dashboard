@@ -292,8 +292,8 @@ export function montarAlertas(d: DadosDosAlertas): Alerta[] {
     alertas.push({
       nivel: "erro",
       texto:
-        `${semExecucao.length} mensagem(ns) esperando ha mais de ` +
-        `${Math.round(LIMITE_ENTRADA_ESPERANDO_S / 60)} min sem nenhum pedido em execucao na conversa. ` +
+        `${semExecucao.length} mensagem(ns) esperando há mais de ` +
+        `${Math.round(LIMITE_ENTRADA_ESPERANDO_S / 60)} min sem nenhum pedido em execução na conversa. ` +
         `O worker pode estar parado ou a conversa travada.`,
     });
   }
@@ -302,7 +302,7 @@ export function montarAlertas(d: DadosDosAlertas): Alerta[] {
     alertas.push({
       nivel: "erro",
       texto:
-        `${d.leasesVencidas} pedido(s) em execucao com a reserva vencida: o worker que os pegou ` +
+        `${d.leasesVencidas} pedido(s) em execução com a reserva vencida: o worker que os pegou ` +
         `provavelmente caiu. Reiniciar o worker recupera.`,
     });
   }
@@ -317,16 +317,16 @@ export function montarAlertas(d: DadosDosAlertas): Alerta[] {
     alertas.push({
       nivel: "alerta",
       texto:
-        `${p.total} resposta(s) sem envio confirmado ha mais de 1 h (${partes.join(", ")}). ` +
-        `Muitas costumam ser legado de antes da correcao do registro de envio. ` +
-        `Nao destrave a fila antes de encerrar essas linhas: o worker reenviaria as respostas antigas.`,
+        `${p.total} resposta(s) sem envio confirmado há mais de 1 h (${partes.join(", ")}). ` +
+        `Muitas costumam ser legado de antes da correção do registro de envio. ` +
+        `Não destrave a fila antes de encerrar essas linhas: o worker reenviaria as respostas antigas.`,
     });
   }
 
   if (d.falhas24h > 0) {
     alertas.push({
       nivel: "alerta",
-      texto: `${d.falhas24h} pedido(s) falharam nas ultimas 24 h.`,
+      texto: `${d.falhas24h} pedido(s) falharam nas últimas 24 h.`,
     });
   }
 
@@ -336,7 +336,7 @@ export function montarAlertas(d: DadosDosAlertas): Alerta[] {
       nivel: "info",
       texto:
         `${aguardandoAnterior.length} mensagem(ns) aguardando o pedido anterior terminar. ` +
-        `E normal: o worker faz um pedido por vez.`,
+        `É normal: o worker faz um pedido por vez.`,
     });
   }
 

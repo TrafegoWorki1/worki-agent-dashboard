@@ -41,9 +41,9 @@ export const PARAMETROS: ReadonlyArray<{
   { chave: "WORKI_WORKER_LEASE_S", rotulo: "Validade da reserva (s)", padrao: "120" },
   { chave: "WORKI_WORKER_CONCURRENCY", rotulo: "Pedidos em paralelo", padrao: "1" },
   { chave: "WORKI_ATALHO_ANDAMENTO", rotulo: "Atalho de andamento", padrao: "1" },
-  { chave: "WORKI_ACK_AFTER_SECONDS", rotulo: "Aviso de andamento apos (s)", padrao: "0" },
+  { chave: "WORKI_ACK_AFTER_SECONDS", rotulo: "Aviso de andamento após (s)", padrao: "0" },
   { chave: "WORKI_WHATSAPP_MAX_CHARS", rotulo: "Caracteres por mensagem", padrao: "1500" },
-  { chave: "WORKI_DRY_RUN", rotulo: "Modo de teste (nao envia)", padrao: "0" },
+  { chave: "WORKI_DRY_RUN", rotulo: "Modo de teste (não envia)", padrao: "0" },
 ];
 
 /** Numero curto ou sinalizador. Qualquer outra coisa nao e exibida. */
@@ -114,4 +114,58 @@ export function extrairParametros(texto: string): ParametroServico[] {
 /** Valor em vigor: o configurado, ou o padrao do codigo. */
 export function valorEmVigor(p: ParametroServico): string {
   return p.valor ?? p.padrao;
+}
+
+/* ------------------------------------------------------------------ */
+/* Erros do EasyPanel em linguagem de gente                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * O EasyPanel as vezes devolve o ERRO como se fosse o corpo do log, por
+ * exemplo `fetch failed (BAD_REQUEST, HTTP 400)`. A tela mostrava isso cru,
+ * como se fosse uma linha de log. Texto curto, de uma linha so, com esse
+ * formato e erro; um log de verdade tem varias linhas.
+ */
+export function pareceErroEmVezDeLog(texto: string): boolean {
+  const limpo = texto.trim();
+  if (!limpo || limpo.includes("\n") || limpo.length > 200) return false;
+  return (
+    /^fetch failed\b/i.test(limpo) ||
+    /\((?:[A-Z_]{3,}),\s*HTTP\s*\d{3}\)/.test(limpo) ||
+    /^(?:TRPCError|Error):/i.test(limpo)
+  );
+}
+
+/**
+ * Traduz o erro tecnico para: o que aconteceu e o que fazer. Nunca devolve a
+ * URL (ja redigida antes) nem o token. O texto tecnico original some da tela
+ * de proposito; o codigo HTTP, quando existe, entra entre parenteses.
+ */
+export function mensagemDeErroDoServico(bruto: string | null | undefined): string {
+  const t = (bruto ?? "").trim();
+  if (!t) return "Não foi possível obter essa informação do EasyPanel.";
+
+  if (/nao configurada|não configurada/i.test(t)) {
+    return "Integração com o EasyPanel não configurada. Defina EASYPANEL_URL e EASYPANEL_API_TOKEN na Vercel para ver status e logs aqui.";
+  }
+
+  const http = t.match(/HTTP\s*(\d{3})|respondeu\s*(\d{3})/i);
+  const codigo = http ? Number(http[1] ?? http[2]) : null;
+
+  if (codigo === 401 || codigo === 403) {
+    return "O EasyPanel recusou o token (HTTP " + codigo + "). Gere um token novo e atualize EASYPANEL_API_TOKEN na Vercel.";
+  }
+  if (codigo === 404 || /dominio do servico nao encontrado/i.test(t)) {
+    return "Serviço não encontrado no EasyPanel. Confira se o projeto e o serviço ainda se chamam n8n/worki-agent.";
+  }
+  if (codigo === 400 || /BAD_REQUEST/i.test(t)) {
+    return "O EasyPanel não conseguiu entregar os logs agora (HTTP 400). O serviço pode estar reiniciando, ou a coleta de logs está indisponível. Tente atualizar em alguns instantes.";
+  }
+  if (codigo !== null && codigo >= 500) {
+    return `O EasyPanel está com problema (HTTP ${codigo}). Tente de novo em instantes.`;
+  }
+  if (/abort|timeout|timed out|inacess/i.test(t)) {
+    return "O EasyPanel não respondeu a tempo. Verifique se o servidor está no ar e tente atualizar.";
+  }
+  return "Não foi possível obter essa informação do EasyPanel. Tente atualizar em instantes.";
 }

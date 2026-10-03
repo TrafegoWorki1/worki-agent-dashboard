@@ -307,6 +307,6 @@ describe("montarAlertas", () => {
       ...vazio,
       esperando: [{ entradaId: "x", conversaId: "c", esperandoS: 300, motivo: "aguardando_anterior" }],
     });
-    expect(a).toEqual([{ nivel: "info", texto: expect.stringContaining("E normal") }]);
+    expect(a).toEqual([{ nivel: "info", texto: expect.stringContaining("É normal") }]);
   });
 });

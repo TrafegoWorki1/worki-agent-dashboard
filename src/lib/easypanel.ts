@@ -4,6 +4,8 @@ import { servidor } from "@/lib/env";
 import {
   extrairCommit,
   extrairParametros,
+  mensagemDeErroDoServico,
+  pareceErroEmVezDeLog,
   type CommitImplantado,
   type ParametroServico,
 } from "@/lib/servico-parse";
@@ -312,7 +314,10 @@ export async function logsResumidos(quantidade = 30): Promise<LogEasyPanel> {
   });
 
   if (!texto) {
-    return { linhas: [], erro: erro ?? "logs indisponiveis" };
+    return { linhas: [], erro: mensagemDeErroDoServico(erro ?? "logs indisponiveis") };
+  }
+  if (pareceErroEmVezDeLog(texto)) {
+    return { linhas: [], erro: mensagemDeErroDoServico(texto) };
   }
 
   const linhas = texto

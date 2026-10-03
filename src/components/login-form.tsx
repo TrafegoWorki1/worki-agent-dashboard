@@ -11,10 +11,16 @@ import { cliente } from "@/lib/env-publico";
  * por design (o banco nao tem RLS liberado para elas). A service role
  * nao aparece em lugar nenhum deste arquivo.
  *
- * Erro do Supabase e mostrado cru aqui de proposito: traduzir "Invalid
- * login credentials" para "senha errada" esconderia o caso de e-mail
- * inexistente, que tem outra causa.
+ * "Invalid login credentials" vira "e-mail ou senha incorretos", sem dizer
+ * qual dos dois: o Supabase tambem nao diz, e nao ha por que confirmar a
+ * um desconhecido que um e-mail existe. Qualquer outro erro aparece como veio.
  */
+function traduzir(mensagem: string): string {
+  return /invalid login credentials/i.test(mensagem)
+    ? "E-mail ou senha incorretos."
+    : mensagem;
+}
+
 export function LoginForm({ mensagem }: { mensagem?: string }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -34,7 +40,7 @@ export function LoginForm({ mensagem }: { mensagem?: string }) {
       });
 
       if (falha) {
-        setErro(falha.message);
+        setErro(traduzir(falha.message));
         setCarregando(false);
         return;
       }

@@ -2,44 +2,69 @@
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                               */
+/*                                                                      */
+/* Tema unico e escuro: azul-noite com dourado champanhe. Nao ha        */
+/* variante clara de proposito. Antes o painel trocava para claro       */
+/* conforme o sistema do usuario, e o dourado perdia contraste no       */
+/* fundo branco.                                                        */
 /* ------------------------------------------------------------------ */
 
 :root {
-  --fundo: #0b0c0e;
-  --superficie: #14161a;
-  --superficie-2: #1c1f25;
-  --borda: #2a2e37;
-  --texto: #e8eaed;
-  --texto-fraco: #9aa1ad;
-  --texto-tenue: #6b7280;
-  --acento: #d7a84b;
-  --ok: #3fb950;
-  --alerta: #d29922;
-  --erro: #f85149;
-  --info: #58a6ff;
-}
+  color-scheme: dark;
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --fundo: #f7f8fa;
-    --superficie: #ffffff;
-    --superficie-2: #f0f2f5;
-    --borda: #dfe3e8;
-    --texto: #14161a;
-    --texto-fraco: #57606a;
-    --texto-tenue: #8b949e;
-  }
+  --fundo: #060913;
+  --superficie: #0c1120;
+  --superficie-2: #121930;
+  --superficie-3: #19223d;
+  --borda: #1b2542;
+  --borda-forte: #2b3961;
+
+  --texto: #e9edf7;
+  --texto-fraco: #a4aec6;
+  --texto-tenue: #6d7a99;
+
+  /* Dourado champanhe: so para marca, item ativo e acao principal. */
+  --acento: #cba763;
+  --acento-forte: #e3c68a;
+  --acento-fundo: rgba(203, 167, 99, 0.1);
+
+  /* Estados. O alerta e laranja, nao dourado, para nao se confundir com a marca. */
+  --ok: #34d399;
+  --alerta: #fb923c;
+  --erro: #f87171;
+  --info: #60a5fa;
+
+  --sombra:
+    0 1px 0 rgba(255, 255, 255, 0.035) inset,
+    0 10px 30px -14px rgba(0, 0, 0, 0.7);
+  --raio: 14px;
 }
 
 * {
   border-color: var(--borda);
 }
 
-body {
+html {
   background: var(--fundo);
+}
+
+body {
+  min-height: 100vh;
   color: var(--texto);
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(900px 480px at 8% -8%, rgba(70, 88, 170, 0.2), transparent 62%),
+    radial-gradient(700px 420px at 100% 0%, rgba(203, 167, 99, 0.07), transparent 58%),
+    var(--fundo);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(203, 167, 99, 0.3);
+  color: #fff;
 }
 
 code,
@@ -49,58 +74,151 @@ pre,
   font-variant-numeric: tabular-nums;
 }
 
+/* Barra de rolagem discreta, no tom do painel. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--borda-forte) transparent;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--acento) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 /* ------------------------------------------------------------------ */
-/* Componentes                                                         */
+/* Cartoes e metricas                                                  */
 /* ------------------------------------------------------------------ */
 
 .cartao {
-  background: var(--superficie);
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0) 38%),
+    var(--superficie);
   border: 1px solid var(--borda);
-  border-radius: 12px;
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
 }
 
 .cartao-titulo {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--texto-fraco);
+  letter-spacing: 0.1em;
+  color: var(--texto-tenue);
+}
+
+.cartao-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.875rem 1.125rem;
+  border-bottom: 1px solid var(--borda);
+}
+
+.cartao-cabecalho h2,
+.cartao-cabecalho h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.cartao-cabecalho p {
+  font-size: 0.75rem;
+  color: var(--texto-tenue);
+}
+
+.metrica {
+  padding: 1rem 1.125rem;
+  min-width: 0;
+}
+
+/* Filete dourado discreto no topo: da identidade sem poluir. */
+.metrica::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1.125rem;
+  width: 1.75rem;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--acento);
+  opacity: 0.55;
 }
 
 .metrica-valor {
-  font-size: 1.875rem;
-  font-weight: 700;
+  margin-top: 0.4rem;
+  font-size: 1.75rem;
+  font-weight: 650;
   line-height: 1.1;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
+
+/* Valor em texto (dominio, "pronto"): menor, para nao vazar do cartao. */
+.metrica-valor-texto {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+
+.metrica-detalhe {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--texto-tenue);
+}
+
+/* ------------------------------------------------------------------ */
+/* Etiquetas                                                            */
+/* ------------------------------------------------------------------ */
 
 .etiqueta {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.125rem 0.5rem;
+  padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
   border: 1px solid transparent;
 }
 
+.etiqueta::before {
+  content: '';
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.9;
+}
+
 .etiqueta-ok {
-  background: color-mix(in srgb, var(--ok) 15%, transparent);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
   color: var(--ok);
-  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  border-color: color-mix(in srgb, var(--ok) 28%, transparent);
 }
 
 .etiqueta-alerta {
-  background: color-mix(in srgb, var(--alerta) 15%, transparent);
+  background: color-mix(in srgb, var(--alerta) 12%, transparent);
   color: var(--alerta);
-  border-color: color-mix(in srgb, var(--alerta) 35%, transparent);
+  border-color: color-mix(in srgb, var(--alerta) 28%, transparent);
 }
 
 .etiqueta-erro {
-  background: color-mix(in srgb, var(--erro) 15%, transparent);
+  background: color-mix(in srgb, var(--erro) 12%, transparent);
   color: var(--erro);
-  border-color: color-mix(in srgb, var(--erro) 35%, transparent);
+  border-color: color-mix(in srgb, var(--erro) 28%, transparent);
 }
 
 .etiqueta-neutra {
@@ -110,22 +228,76 @@ pre,
 }
 
 .etiqueta-info {
-  background: color-mix(in srgb, var(--info) 15%, transparent);
+  background: color-mix(in srgb, var(--info) 12%, transparent);
   color: var(--info);
-  border-color: color-mix(in srgb, var(--info) 35%, transparent);
+  border-color: color-mix(in srgb, var(--info) 28%, transparent);
+}
+
+/* Aviso informativo (nao e erro): orientacao, estado vazio com explicacao. */
+.aviso {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--texto-fraco);
+  background: color-mix(in srgb, var(--info) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--info) 20%, transparent);
 }
 
 /* ------------------------------------------------------------------ */
-/* Navegacao                                                           */
+/* Navegacao                                                            */
 /* ------------------------------------------------------------------ */
 
+.lateral {
+  background: linear-gradient(180deg, rgba(10, 14, 28, 0.85), rgba(7, 10, 20, 0.85));
+  backdrop-filter: blur(14px);
+  border-right: 1px solid var(--borda);
+}
+
+.marca {
+  display: grid;
+  place-items: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.9375rem;
+  color: #1a1407;
+  background: linear-gradient(135deg, var(--acento-forte), var(--acento));
+  box-shadow: 0 6px 18px -6px rgba(203, 167, 99, 0.6);
+}
+
+.nav-grupo {
+  margin: 1.25rem 0 0.4rem;
+  padding: 0 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--texto-tenue);
+}
+
 .nav-item {
-  display: block;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 0.875rem;
   color: var(--texto-fraco);
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.14s,
+    color 0.14s;
+}
+
+.nav-item svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  opacity: 0.75;
 }
 
 .nav-item:hover {
@@ -134,13 +306,28 @@ pre,
 }
 
 .nav-item-ativo {
-  background: var(--superficie-2);
-  color: var(--acento);
+  background: var(--acento-fundo);
+  color: var(--acento-forte);
   font-weight: 600;
 }
 
+.nav-item-ativo svg {
+  opacity: 1;
+}
+
+.nav-item-ativo::before {
+  content: '';
+  position: absolute;
+  left: -0.5rem;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--acento);
+}
+
 /* ------------------------------------------------------------------ */
-/* Tabelas                                                             */
+/* Tabelas                                                              */
 /* ------------------------------------------------------------------ */
 
 .tabela {
@@ -151,55 +338,104 @@ pre,
 
 .tabela th {
   text-align: left;
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 1rem;
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--texto-tenue);
+  background: color-mix(in srgb, var(--superficie-2) 55%, transparent);
   border-bottom: 1px solid var(--borda);
   white-space: nowrap;
 }
 
 .tabela td {
-  padding: 0.625rem 0.75rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--borda) 50%, transparent);
-  vertical-align: top;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--borda) 55%, transparent);
+  vertical-align: middle;
 }
 
 .tabela tr:last-child td {
   border-bottom: none;
 }
 
-.tabela tbody tr:hover {
-  background: color-mix(in srgb, var(--superficie-2) 60%, transparent);
+.tabela tbody tr {
+  transition: background-color 0.1s;
 }
 
-/* Trunca sem quebrar o layout de tabela. */
+.tabela tbody tr:hover {
+  background: color-mix(in srgb, var(--superficie-2) 70%, transparent);
+}
+
+.tabela-linha-ativa {
+  background: var(--acento-fundo);
+  box-shadow: inset 2px 0 0 var(--acento);
+}
+
+/* Coluna de texto longo: duas linhas e depois reticencias. O texto inteiro
+   fica no atributo title e, onde existe, num bloco expansivel. */
 .truncar {
-  max-width: 22rem;
+  max-width: 24rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+/* Celula de tabela nao aceita line-clamp (display -webkit-box quebra o layout
+   da linha e corta o texto no meio). Na tabela o limite vem do texto, que e
+   encurtado antes de chegar aqui; o CSS so quebra palavras longas. */
+td.truncar {
+  display: table-cell;
+  -webkit-line-clamp: unset;
+  overflow-wrap: anywhere;
+}
+
+.col-numero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------ */
-/* Formulario                                                          */
+/* Formulario                                                           */
 /* ------------------------------------------------------------------ */
+
+.barra-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.875rem 1.125rem;
+}
 
 .campo {
   width: 100%;
-  padding: 0.625rem 0.75rem;
-  background: var(--superficie);
+  padding: 0.55rem 0.75rem;
+  background: var(--superficie-2);
   border: 1px solid var(--borda);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--texto);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
+  transition:
+    border-color 0.12s,
+    background-color 0.12s;
+}
+
+.campo::placeholder {
+  color: var(--texto-tenue);
+}
+
+.campo:hover {
+  border-color: var(--borda-forte);
 }
 
 .campo:focus {
-  outline: 2px solid color-mix(in srgb, var(--acento) 60%, transparent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: color-mix(in srgb, var(--acento) 65%, transparent);
+  background: var(--superficie-3);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 16%, transparent);
 }
 
 .botao {
@@ -207,19 +443,27 @@ pre,
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-forte);
   background: var(--superficie-2);
   color: var(--texto);
   cursor: pointer;
-  transition: background-color 0.12s, border-color 0.12s;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    transform 0.05s;
 }
 
 .botao:hover:not(:disabled) {
-  border-color: var(--acento);
+  background: var(--superficie-3);
+  border-color: color-mix(in srgb, var(--acento) 55%, var(--borda-forte));
+}
+
+.botao:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .botao:disabled {
@@ -228,11 +472,172 @@ pre,
 }
 
 .botao-primario {
-  background: var(--acento);
+  background: linear-gradient(180deg, var(--acento-forte), var(--acento));
   border-color: var(--acento);
-  color: #14161a;
+  color: #1a1407;
 }
 
 .botao-primario:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--acento) 85%, #fff);
+  background: linear-gradient(180deg, #ecd199, var(--acento-forte));
+  border-color: var(--acento-forte);
+}
+
+.botao-pequeno {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  border-radius: 8px;
+}
+
+.link-acao {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--acento-forte);
+  white-space: nowrap;
+}
+
+.link-acao:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Paginacao                                                            */
+/* ------------------------------------------------------------------ */
+
+.paginacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1.125rem;
+  border-top: 1px solid var(--borda);
+  font-size: 0.75rem;
+  color: var(--texto-tenue);
+}
+
+.paginacao-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pag-item {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--texto-fraco);
+  transition:
+    background-color 0.12s,
+    color 0.12s;
+}
+
+a.pag-item:hover {
+  background: var(--superficie-2);
+  color: var(--texto);
+}
+
+.pag-item-ativo {
+  background: var(--acento-fundo);
+  border-color: color-mix(in srgb, var(--acento) 45%, transparent);
+  color: var(--acento-forte);
+}
+
+.pag-item-desativado {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.pag-reticencias {
+  padding: 0 0.25rem;
+  color: var(--texto-tenue);
+}
+
+/* ------------------------------------------------------------------ */
+/* Conversa (linha do tempo)                                            */
+/* ------------------------------------------------------------------ */
+
+.balao {
+  max-width: min(46rem, 88%);
+  padding: 0.65rem 0.9rem;
+  border-radius: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--borda);
+}
+
+.balao-entrada {
+  background: var(--superficie-2);
+  border-top-left-radius: 4px;
+}
+
+.balao-saida {
+  background: color-mix(in srgb, var(--acento) 9%, var(--superficie));
+  border-color: color-mix(in srgb, var(--acento) 22%, var(--borda));
+  border-top-right-radius: 4px;
+}
+
+/* Desce dos cartoes de metrica ate os blocos de codigo. */
+pre {
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Abas de filtro                                                       */
+/*                                                                      */
+/* Um clique troca o filtro (antes: abrir o menu, escolher e apertar    */
+/* "Filtrar"). Sao links, entao o estado fica na URL.                   */
+/* ------------------------------------------------------------------ */
+
+.abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: var(--superficie);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.aba {
+  padding: 0.4rem 0.85rem;
+  border-radius: 9px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--texto-fraco);
+  white-space: nowrap;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
+}
+
+.aba:hover {
+  background: var(--superficie-2);
+  color: var(--texto);
+}
+
+.aba-ativa {
+  background: var(--acento-fundo);
+  color: var(--acento-forte);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acento) 35%, transparent);
+}
+
+/* Texto de apoio abaixo de um titulo de campo. */
+.dica {
+  font-size: 0.75rem;
+  color: var(--texto-tenue);
 }
