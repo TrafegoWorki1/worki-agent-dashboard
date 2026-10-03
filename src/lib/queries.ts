@@ -1,14 +1,28 @@
 import "server-only";
 
 import { supabaseServidor } from "@/lib/supabase-servidor";
+import {
+  calcularTempos,
+  contarAtalhos,
+  contarFalhas,
+  entradasEsperando,
+  montarAlertas,
+  resumirSaidas,
+  resumirTempos,
+  type Alerta,
+  type EntradaEsperando,
+  type ResumoSaidas,
+  type ResumoTempos,
+  type TempoResposta,
+} from "@/lib/fila";
 import type {
   AcaoPendente,
   Auditoria,
   Conversa,
+  Entrada,
   EtapaTarefa,
   Memoria,
   Mensagem,
-  RecuperarLeases,
   Saida,
   Tarefa,
 } from "@/lib/tipos";
@@ -28,7 +42,16 @@ import type {
  *
  *  3. Nenhuma consulta escreve. Aprovacao e consumo de aprovacao sao do
  *     worker; o dashboard so le. A unica escrita e `aprovarAcao`, que
- *     chama a RPC `worki_aprovar_acao`.
+ *     chama a RPC `worki_aprovar_acao`. Um teste (somente-leitura.test.ts)
+ *     garante isso varrendo o codigo: nenhum insert/update/delete/upsert e
+ *     nenhuma RPC alem dessa.
+ *
+ *     Atencao: `worki_recuperar_leases` NAO e leitura. Ela marca entradas
+ *     como 'falhou', tarefas como 'bloqueada' e envios como 'incerto'. Uma
+ *     versao anterior deste painel a chamava a cada abertura da Visao geral,
+ *     alterando a fila sem ninguem pedir e mostrando um contador que so
+ *     aparecia na primeira vez. Agora a contagem de reservas vencidas vem de
+ *     uma consulta comum.
  */
 
 export type Filtros = {
@@ -61,10 +84,8 @@ export type VisaoGeral = {
   saidasPendentes: number;
   enviosIncertos: number;
   aprovacoesPendentes: number;
-  leasesVencidos: {
-    tarefas_bloqueadas: number;
-    envios_incertos: number;
-  } | null;
+  /** Pedidos 'processando' cuja reserva venceu: o worker que os pegou provavelmente caiu. */
+  leasesVencidas: number;
 };
 
 export async function visaoGeral(): Promise<VisaoGeral> {
@@ -78,7 +99,7 @@ export async function visaoGeral(): Promise<VisaoGeral> {
     concluidas,
     saidas,
     aprovacoes,
-    leases,
+    leasesVencidas,
   ] = await Promise.all([
     sb.from("conversas").select("*", { count: "exact", head: true }),
     sb.from("mensagens").select("*", { count: "exact", head: true }),
@@ -102,7 +123,11 @@ export async function visaoGeral(): Promise<VisaoGeral> {
       .from("acoes_pendentes")
       .select("*", { count: "exact", head: true })
       .eq("status", "aguardando"),
-    buscarLeases(),
+    sb
+      .from("entradas")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "processando")
+      .lt("lease_expires_at", new Date().toISOString()),
   ]);
 
   const incertos = await sb
@@ -119,15 +144,8 @@ export async function visaoGeral(): Promise<VisaoGeral> {
     saidasPendentes: saidas.count ?? 0,
     enviosIncertos: incertos.count ?? 0,
     aprovacoesPendentes: aprovacoes.count ?? 0,
-    leasesVencidos: leases,
+    leasesVencidas: leasesVencidas.count ?? 0,
   };
-}
-
-async function buscarLeases(): Promise<RecuperarLeases | null> {
-  const sb = supabaseServidor();
-  const { data, error } = await sb.rpc("worki_recuperar_leases");
-  if (error) return null;
-  return data as RecuperarLeases;
 }
 
 /* ------------------------------------------------------------------ */
@@ -215,6 +233,137 @@ export async function listarSaidas(f: Filtros = {}): Promise<Saida[]> {
 
   if (error) throw new Error(`saidas: ${error.message}`);
   return (data ?? []) as Saida[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Fila e entregas                                                     */
+/* ------------------------------------------------------------------ */
+
+export async function listarEntradas(f: Filtros = {}): Promise<Entrada[]> {
+  const sb = supabaseServidor();
+  let q = sb.from("entradas").select("*");
+
+  if (f.conversaId) q = q.eq("conversa_id", f.conversaId);
+  if (f.status) q = q.eq("status", f.status);
+  if (f.desde) q = q.gte("criado_em", f.desde);
+  if (f.ate) q = q.lte("criado_em", f.ate);
+
+  const { data, error } = await q
+    .order("criado_em", { ascending: false })
+    .limit(limite(f.limite));
+
+  if (error) throw new Error(`entradas: ${error.message}`);
+  return (data ?? []) as Entrada[];
+}
+
+function mesclarPorId<T extends { id: string }>(...listas: T[][]): T[] {
+  const mapa = new Map<string, T>();
+  for (const lista of listas) for (const item of lista) mapa.set(item.id, item);
+  return [...mapa.values()];
+}
+
+export type SaudeDaFila = {
+  saidas: ResumoSaidas;
+  esperando: EntradaEsperando[];
+  falhas24h: number;
+  atalhos24h: number;
+  leasesVencidas: number;
+  alertas: Alerta[];
+};
+
+/**
+ * Estado da fila em numeros e frases. So leitura.
+ *
+ * Busca o que e recente (24 h) e, a parte, o que ainda esta aberto qualquer
+ * que seja a idade: uma resposta parada ha tres dias nao entra na janela de
+ * 24 h, mas e exatamente o que precisa aparecer.
+ */
+export async function saudeDaFila(): Promise<SaudeDaFila> {
+  const sb = supabaseServidor();
+  const agora = new Date();
+  const desde = new Date(agora.getTime() - 24 * 3_600_000).toISOString();
+
+  const [entRecentes, entAbertas, saiRecentes, saiAbertas] = await Promise.all([
+    sb.from("entradas").select("*").gte("atualizado_em", desde).limit(500),
+    sb.from("entradas").select("*").in("status", ["aguardando", "processando"]).limit(200),
+    sb.from("saidas").select("*").gte("criado_em", desde).limit(500),
+    sb
+      .from("saidas")
+      .select("*")
+      .in("status", ["pendente", "enviando", "falhou", "incerto"])
+      .limit(500),
+  ]);
+
+  for (const r of [entRecentes, entAbertas, saiRecentes, saiAbertas]) {
+    if (r.error) throw new Error(`fila: ${r.error.message}`);
+  }
+
+  const entradas = mesclarPorId(
+    (entRecentes.data ?? []) as Entrada[],
+    (entAbertas.data ?? []) as Entrada[],
+  );
+  const saidas = mesclarPorId(
+    (saiRecentes.data ?? []) as Saida[],
+    (saiAbertas.data ?? []) as Saida[],
+  );
+
+  const leasesVencidas = entradas.filter(
+    (e) =>
+      e.status === "processando" &&
+      e.lease_expires_at !== null &&
+      Date.parse(e.lease_expires_at) < agora.getTime(),
+  ).length;
+
+  const resumo = resumirSaidas(saidas, agora);
+  const esperando = entradasEsperando(entradas, agora);
+  const falhas24h = contarFalhas(entradas, agora);
+
+  return {
+    saidas: resumo,
+    esperando,
+    falhas24h,
+    atalhos24h: contarAtalhos(entradas, agora),
+    leasesVencidas,
+    alertas: montarAlertas({ saidas: resumo, esperando, falhas24h, leasesVencidas }),
+  };
+}
+
+/**
+ * Tempos das ultimas mensagens: espera na fila, tempo do Hermes e total.
+ *
+ * Junta tres tabelas no codigo (entradas, mensagens, saidas) em vez de um
+ * join do PostgREST: nao depende de chaves estrangeiras declaradas e as
+ * consultas ficam simples e limitadas.
+ */
+export async function temposDeResposta(
+  n = 20,
+): Promise<{ tempos: TempoResposta[]; resumo: ResumoTempos }> {
+  const sb = supabaseServidor();
+
+  const { data: ents, error: eErro } = await sb
+    .from("entradas")
+    .select("*")
+    .order("criado_em", { ascending: false })
+    .limit(limite(n));
+  if (eErro) throw new Error(`entradas: ${eErro.message}`);
+  const entradas = (ents ?? []) as Entrada[];
+  if (entradas.length === 0) {
+    return { tempos: [], resumo: resumirTempos([]) };
+  }
+
+  const [msgs, sais] = await Promise.all([
+    sb.from("mensagens").select("*").in("id", entradas.map((e) => e.mensagem_id)),
+    sb.from("saidas").select("*").in("entrada_id", entradas.map((e) => e.id)),
+  ]);
+  if (msgs.error) throw new Error(`mensagens: ${msgs.error.message}`);
+  if (sais.error) throw new Error(`saidas: ${sais.error.message}`);
+
+  const tempos = calcularTempos(
+    entradas,
+    (msgs.data ?? []) as Mensagem[],
+    (sais.data ?? []) as Saida[],
+  );
+  return { tempos, resumo: resumirTempos(tempos) };
 }
 
 /* ------------------------------------------------------------------ */

@@ -12,8 +12,9 @@ repositorio **nao o altera** — apenas le o estado dele.
 
 | Pagina | Conteudo |
 |---|---|
-| `/` | Visao geral: status do servico, contadores, aprovacoes pendentes, tarefas e mensagens recentes, logs |
-| `/servico` | Estado do `n8n/worki-agent` no EasyPanel, resposta do `/health`, logs |
+| `/` | Visao geral: status do servico e commit no ar, prontidao, **alertas**, tempo de resposta, aprovacoes pendentes, tarefas e mensagens recentes, logs |
+| `/fila` | **Fila e entregas:** alertas, tempo de resposta (fila, Hermes, envio), mensagens esperando, saidas com filtro por status |
+| `/servico` | Estado do `n8n/worki-agent` no EasyPanel, **versao no ar (commit)**, resposta do `/health` e do `/ready` (banco e worker), parametros do worker, logs |
 | `/conversas` | Conversas, sessao do Hermes vinculada, mensagens e tarefas por conversa |
 | `/tarefas` | Tarefas por status, etapas, checkpoint, proxima acao e resultado |
 | `/aprovacoes` | Acoes aguardando confirmacao, com aprovacao por palavra |
@@ -39,6 +40,20 @@ servidor, em tres camadas, nesta ordem:
 3. **Validacao por pagina.** Toda pagina chama `exigirAcesso()` antes de
    consultar. Se o middleware for removido por engano, as paginas seguem
    protegidas.
+
+### Somente leitura, verificado
+
+O painel nao altera a fila do worker. A unica escrita e aprovar uma acao
+(`worki_aprovar_acao`). Isso e **testado**: `testes/somente-leitura.test.ts`
+varre o codigo e reprova qualquer `insert`/`update`/`delete`/`upsert` e
+qualquer RPC alem dessa.
+
+Existe por causa de um erro real: a Visao geral chamava
+`worki_recuperar_leases` a cada abertura. A funcao parece uma consulta, mas
+**escreve** (marca entradas como `falhou`, tarefas como `bloqueada` e envios
+como `incerto`). Abrir o painel alterava a fila, e o contador so aparecia na
+primeira vez, depois voltava a zero. Agora "reservas vencidas" vem de uma
+consulta comum. Quem recupera reserva e o worker, no boot.
 
 ### Por que existe `env.ts` e `env-publico.ts`
 
@@ -87,12 +102,41 @@ Somente leitura. O modulo `src/lib/easypanel.ts` nao tem nenhuma procedure de
 mutacao: reiniciar, parar e fazer deploy sao acoes destrutivas e nao fazem
 parte do escopo. Um teste verifica isso.
 
-Mostra se o servico esta online, ultimo deploy, branch, limites de recurso e
-logs resumidos. O `token` nunca sai do servidor: e lido de `process.env` e
-montado no header dentro da funcao.
+Mostra se o servico esta online, **o commit que esta rodando**, branch, limites
+de recurso, **os parametros de comportamento do worker** e logs resumidos. O
+`token` nunca sai do servidor: e lido de `process.env` e montado no header
+dentro da funcao.
+
+A resposta do EasyPanel traz o `env` **inteiro** do servico, com chaves em
+texto puro. Por isso `src/lib/servico-parse.ts` nao repassa o texto bruto: so
+sai o commit e uma **lista fechada** de parametros (tempos, limites,
+sinalizadores), e so se o valor parecer numero ou sinalizador. Um segredo colado
+por engano num desses campos nao passa. `testes/servico.test.ts` prova que
+nenhum segredo do env aparece na saida.
+
+O `/ready` do worker-agent (banco e worker de pe) e lido alem do `/health`, que
+so prova que o processo responde. Do corpo do `/ready` saem so tres booleanos;
+as mensagens de erro de infraestrutura nao saem do servidor.
 
 Erros de rede sao mascarados antes de exibir — URL e identificadores internos
 nao vazam para a tela.
+
+---
+
+## O que o painel acompanha do worker-agent
+
+| Mudanca no worker-agent | Onde aparece |
+|---|---|
+| Respostas agora ficam `enviada`, com `enviado_em` | `/fila`: "enviadas (24 h)", coluna "Envio" do tempo de resposta |
+| Respostas antigas sem envio confirmado (legado) | Alerta "paradas ha mais de 1 h", com o aviso de nao destravar a fila antes de encerrar essas linhas |
+| Atalho de andamento ("terminou?") | Entrada `cancelada` com motivo proprio; contada em "atalho de andamento (24 h)" e **fora** das medias de tempo |
+| Pedido falhou | "Falhas (24 h)"; a conversa nao fica mais travada |
+| Worker parado ou conversa travada | Alerta vermelho: mensagem esperando sem nenhum pedido em execucao |
+| Qual fase esta no ar | Commit na Visao geral e em `/servico` |
+| Intervalo da fila, limite por pedido, atalho, divisao de mensagens | Tabela "Parametros do worker" em `/servico` |
+
+Tempo de resposta = espera na fila + tempo do Hermes + envio. A mediana e o
+percentil 90 usam as ultimas 20 mensagens.
 
 ---
 
@@ -137,7 +181,7 @@ de login explica o que falta em vez de mostrar erro 500.
 ## Testes
 
 ```bash
-npm test          # 48 testes
+npm test          # 84 testes
 npm run typecheck # tsc --noEmit
 npm run build     # build de producao
 ```
@@ -150,6 +194,9 @@ Cobertura:
 | `testes/aprovacao.test.ts` | Aprovacao valida, expirada, ja decidida, sem conversa, palavras por acao |
 | `testes/memoria.test.ts` | Isolamento por proprietario e projeto, memoria global, vazamento |
 | `testes/segredos.test.ts` | Segredo ausente do bundle, separacao de modulos, EasyPanel somente leitura |
+| `testes/somente-leitura.test.ts` | Nenhuma escrita no banco alem de aprovar; nenhuma RPC de manutencao da fila |
+| `testes/fila.test.ts` | Tempos (fila, Hermes, envio), mediana e p90, saidas paradas, espera normal x travamento, alertas |
+| `testes/servico.test.ts` | Commit implantado e parametros do worker; nenhum segredo do env na saida |
 
 Para verificar segredos no bundle de verdade, faca o build antes:
 
@@ -176,7 +223,7 @@ de build do EasyPanel.
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 ·
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 ·
 `@supabase/ssr` · Vitest.
 
 ## Repositorio relacionado
