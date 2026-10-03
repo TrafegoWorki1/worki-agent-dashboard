@@ -107,8 +107,16 @@ arquivo.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | sim | Auth no navegador. Nao da acesso a dados |
 | `SUPABASE_SERVICE_ROLE_KEY` | **nao** | Leitura do banco, ignora RLS |
 | `DASHBOARD_ALLOWED_EMAILS` | **nao** | Allowlist. Vazio = ninguem entra |
+
+Opcional, so para a pagina `/servico` mostrar o status do container:
+
+| Variavel | Publica? | Funcao |
+|---|---|---|
 | `EASYPANEL_URL` | **nao** | Painel |
 | `EASYPANEL_API_TOKEN` | **nao** | Token MCP, leitura de status |
+
+Sem elas o painel funciona por completo; apenas `/servico` informa que a
+integracao nao esta configurada, em vez de derrubar a rota.
 
 **Nunca crie `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`.** Um teste de
 auditoria reprova o build se ela existir.
@@ -154,8 +162,8 @@ npm run build && npm test
 ## Deploy na Vercel
 
 1. Importe o repositorio na Vercel.
-2. Configure as seis variaveis em **Settings > Environment Variables**,
-   para os tres ambientes (Production, Preview, Development).
+2. Configure as **quatro** variaveis obrigatorias em
+   **Settings > Environment Variables**, no ambiente **Production**.
 3. Deploy.
 
 O build e estatico do Next; nenhuma configuracao extra e necessaria.

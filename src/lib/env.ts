@@ -47,6 +47,17 @@ function pegar(nome: string): string {
 }
 
 /**
+ * Le uma variavel opcional: devolve null em vez de estourar.
+ * Usado pelo EasyPanel, que e opcional no painel.
+ */
+function opcional(nome: string): string | null {
+  const v = process.env[nome];
+  return v && v.trim() ? v.trim() : null;
+}
+
+export {};
+
+/**
  * Guard de modulo: impede que um arquivo de servidor seja puxado para o
  * bundle do cliente. Um `import 'client-only'` faria isso na importacao,
  * mas a mensagem de erro dai nao ajuda ninguem a entender o motivo.
@@ -85,8 +96,14 @@ export type ConfigServidor = {
   supabaseAnonKey: string;
   serviceRoleKey: string;
   emailsPermitidos: string[];
+
+  /**
+   * Integracao com o EasyPanel e OPCIONAL. Sem essas duas variaveis a
+   * pagina /servico mostra "nao configurado" em vez de derrubar a rota
+   * inteira — o painel funciona sem elas, so perde a leitura de status.
+   */
   easypanelUrl: string;
-  easypanelApiToken: string;
+  easypanelApiToken: string | null;
 };
 
 export function servidor(): ConfigServidor {
@@ -103,8 +120,10 @@ export function servidor(): ConfigServidor {
     supabaseAnonKey: pegar("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     serviceRoleKey: pegar(NOME_SERVICE_ROLE),
     emailsPermitidos,
-    easypanelUrl: (process.env.EASYPANEL_URL ?? "").replace(/\/+$/, ""),
-    easypanelApiToken: pegar(NOME_TOKEN_EASYPANEL),
+    // `opcional()` ja devolve null, entao nao precisa de encadeamento
+    // opcional: o replace seria aplicado sobre undefined.
+    easypanelUrl: (opcional("EASYPANEL_URL") ?? "").replace(/\/+$/, ""),
+    easypanelApiToken: opcional(NOME_TOKEN_EASYPANEL),
   };
 }
 

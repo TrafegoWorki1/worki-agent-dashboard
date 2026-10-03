@@ -41,15 +41,26 @@ function mascararToken(token: string): string {
   return `${token.slice(0, 4)}***${token.slice(-2)}`;
 }
 
+/** Integracao desativada? As telas mostram o motivo em vez de quebrar. */
+export function easypanelDesativado(): string | null {
+  const cfg = servidor();
+  if (!cfg.easypanelUrl && !cfg.easypanelApiToken) {
+    return "Integracao com o EasyPanel nao configurada neste ambiente.";
+  }
+  if (!cfg.easypanelUrl) return "EASYPANEL_URL nao configurada.";
+  if (!cfg.easypanelApiToken) return "EASYPANEL_API_TOKEN nao configurada.";
+  return null;
+}
+
 async function chamarMcp(
   ferramenta: "execute_query",
   procedure: string,
   entrada: Record<string, unknown>,
 ): Promise<{ texto: string | null; erro?: string }> {
+  const desativado = easypanelDesativado();
+  if (desativado) return { texto: null, erro: desativado };
+
   const cfg = servidor();
-  if (!cfg.easypanelUrl) {
-    return { texto: null, erro: "EASYPANEL_URL nao configurada" };
-  }
 
   const controlador = new AbortController();
   const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
@@ -163,9 +174,7 @@ export async function statusServico(): Promise<StatusEasyPanel> {
  * E o unico jeito de saber se o container responde de verdade: o painel
  * dizer `enabled: true` nao prova que o processo subiu.
  */
-export async function healthDoServico(
-  base?: string,
-): Promise<{
+export async function healthDoServico(base?: string): Promise<{
   ok: boolean;
   latenciaMs: number | null;
   corpo: unknown;
@@ -232,5 +241,6 @@ export async function logsResumidos(quantidade = 30): Promise<LogEasyPanel> {
 /** Identifica qual service role esta em uso, sem revelar o valor. */
 export function descricaoDoToken(): string {
   const cfg = servidor();
+  if (!cfg.easypanelApiToken) return "token nao configurado";
   return `token ${mascararToken(cfg.easypanelApiToken)}`;
 }
