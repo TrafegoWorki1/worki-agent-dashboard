@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { Alerta } from "@/lib/fila";
 import {
   STATUS_ACAO,
   STATUS_ENTRADA,
@@ -193,6 +194,36 @@ export function Metrica({
         <div className="mt-1 text-xs text-[var(--texto-tenue)]">{detalhe}</div>
       )}
     </div>
+  );
+}
+
+const COR_ALERTA: Record<Alerta["nivel"], string> = {
+  erro: "var(--erro)",
+  alerta: "var(--alerta)",
+  info: "var(--texto-tenue)",
+};
+
+/** Lista de alertas, do mais grave para o menos. Sem alertas, diz que esta tudo certo. */
+export function ListaAlertas({ alertas }: { alertas: Alerta[] }) {
+  if (alertas.length === 0) {
+    return (
+      <div className="cartao p-4 text-sm text-[var(--ok)]">
+        Nenhum alerta: fila e entregas dentro do esperado.
+      </div>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {alertas.map((a, i) => (
+        <li
+          key={i}
+          className="cartao p-3 text-sm"
+          style={{ borderLeft: `3px solid ${COR_ALERTA[a.nivel]}` }}
+        >
+          {a.texto}
+        </li>
+      ))}
+    </ul>
   );
 }
 

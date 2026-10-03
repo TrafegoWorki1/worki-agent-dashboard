@@ -5,6 +5,9 @@
  *   - 20261002231514_baseline_agente_dominante.sql
  *   - 20261002231524_runtime_portugues.sql
  *
+ * As migracoes seguintes (20261003*) so redefinem funcoes (RPCs); nao mudam
+ * tabelas nem colunas, entao este arquivo nao muda por causa delas.
+ *
  * Nao sao palpite: os nomes de coluna e os valores de `status` vem dos
  * CHECK constraints do banco. Se o backend mudar o schema, este arquivo
  * precisa mudar junto — e o teste `schema.test.ts` avisa quando os tipos
@@ -72,6 +75,9 @@ export const STATUS_ENTRADA = [
   "processando",
   "concluida",
   "falhou",
+  // Existe no CHECK do banco. O receptor do worker-agent cancela a entrada de
+  // uma pergunta de andamento ("terminou?") depois de respondê-la na hora.
+  "cancelada",
 ] as const;
 export type StatusEntrada = (typeof STATUS_ENTRADA)[number];
 
@@ -115,7 +121,17 @@ export type Entrada = {
   criado_em: string;
   atualizado_em: string;
   conversa_id: string | null;
+  /** Ordem de chegada dentro da conversa; o worker respeita essa ordem. */
+  ordem: number | null;
+  /** Quando o Hermes comecou a executar. Nulo antes de iniciar. */
+  execucao_iniciada_em: string | null;
 };
+
+/**
+ * `ultimo_erro` das entradas canceladas pelo atalho de andamento do receptor
+ * (worki-agent/integracoes/evolution/webhook.py). Usado so para contar.
+ */
+export const MOTIVO_ATALHO_ANDAMENTO = "respondida pelo atalho de andamento";
 
 export type Saida = {
   id: string;
@@ -130,6 +146,9 @@ export type Saida = {
   ultimo_erro: string | null;
   criado_em: string;
   enviado_em: string | null;
+  disponivel_em: string | null;
+  lease_owner: string | null;
+  lease_expires_at: string | null;
 };
 
 export type Tarefa = {
@@ -212,11 +231,9 @@ export type Auditoria = {
 /** worki_aprovar_acao(p_conversa_id, p_palavra, p_aprovador, p_acao_id) */
 export type ResultadoAprovar = number;
 
-/** worki_recuperar_leases() -> jsonb */
-export type RecuperarLeases = {
-  tarefas_bloqueadas: number;
-  envios_incertos: number;
-};
+// `worki_recuperar_leases()` NAO e chamada pelo painel: ela escreve no banco
+// (marca entradas como 'falhou', tarefas como 'bloqueada' e envios como
+// 'incerto'). Quem recupera lease e o worker, no boot.
 
 /**
  * Palavras de aprovacao por acao, do contrato do backend.

@@ -1,12 +1,21 @@
 import { exigirAcesso } from "@/lib/auth";
-import { healthDoServico, logsResumidos, statusServico } from "@/lib/easypanel";
-import { visaoGeral } from "@/lib/queries";
+import {
+  healthDoServico,
+  logsResumidos,
+  prontidaoDoServico,
+  statusServico,
+} from "@/lib/easypanel";
+import { formatarDuracao } from "@/lib/fila";
+import { saudeDaFila, temposDeResposta, visaoGeral } from "@/lib/queries";
 import { STATUS_ENTRADA, STATUS_SAIDA, STATUS_TAREFA } from "@/lib/tipos";
+
+import Link from "next/link";
 
 import { Cabecalho, LayoutPainel } from "@/components/layout";
 import {
   Etiqueta,
   ErroBox,
+  ListaAlertas,
   Metrica,
   Vazio,
   dataHora,
@@ -20,6 +29,10 @@ import {
   mensagensRecentes,
 } from "@/lib/queries";
 
+function simNao(v: boolean | null): string {
+  return v === null ? "?" : v ? "ok" : "fora";
+}
+
 // O painel mostra estado atual: sem cache estatico.
 export const dynamic = "force-dynamic";
 
@@ -27,16 +40,29 @@ export default async function PaginaVisaoGeral() {
   const usuario = await exigirAcesso();
 
   // Busca em paralelo: a pagina nao depende de nenhuma delas para a outra.
-  const [dados, status, health, logs, mensagens, tarefas, aprovacoes] =
-    await Promise.all([
-      visaoGeral(),
-      statusServico(),
-      healthDoServico(),
-      logsResumidos(15),
-      mensagensRecentes({ limite: 8 }),
-      listarTarefas({ limite: 6 }),
-      listarAprovacoes({ limite: 6 }),
-    ]);
+  const [
+    dados,
+    status,
+    health,
+    pronto,
+    logs,
+    mensagens,
+    tarefas,
+    aprovacoes,
+    saude,
+    tempos,
+  ] = await Promise.all([
+    visaoGeral(),
+    statusServico(),
+    healthDoServico(),
+    prontidaoDoServico(),
+    logsResumidos(15),
+    mensagensRecentes({ limite: 8 }),
+    listarTarefas({ limite: 6 }),
+    listarAprovacoes({ limite: 6 }),
+    saudeDaFila(),
+    temposDeResposta(20),
+  ]);
 
   return (
     <LayoutPainel usuario={usuario} ativo="/">
@@ -63,6 +89,14 @@ export default async function PaginaVisaoGeral() {
               <dt className="text-[var(--texto-tenue)]">Branch</dt>
               <dd className="mono">{status.branch ?? "—"}</dd>
             </div>
+            <div className="col-span-2">
+              <dt className="text-[var(--texto-tenue)]">No ar (commit)</dt>
+              <dd className="mono truncate" title={status.commit?.mensagem}>
+                {status.commit
+                  ? `${status.commit.hashCurto} ${status.commit.mensagem}`
+                  : "—"}
+              </dd>
+            </div>
             <div>
               <dt className="text-[var(--texto-tenue)]">Latencia</dt>
               <dd className="mono">
@@ -82,11 +116,38 @@ export default async function PaginaVisaoGeral() {
           </dl>
         </div>
 
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-[var(--texto-tenue)]">Prontidao (/ready):</span>
+          {pronto.alcancou ? (
+            <>
+              <Etiqueta status={pronto.pronto ? "enviada" : "falhou"} />
+              <span>Supabase {simNao(pronto.supabase)}</span>
+              <span>Worker {simNao(pronto.worker)}</span>
+              <span>Evolution {simNao(pronto.evolution)}</span>
+            </>
+          ) : (
+            <span className="text-[var(--erro)]">
+              {pronto.erro ?? "sem resposta"}
+            </span>
+          )}
+        </div>
+
         {status.erro && (
           <div className="mt-3">
             <ErroBox mensagem={`EasyPanel: ${status.erro}`} />
           </div>
         )}
+      </section>
+
+      {/* Alertas */}
+      <section>
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold">Alertas</h2>
+          <Link href="/fila" className="text-xs underline">
+            Fila e entregas
+          </Link>
+        </div>
+        <ListaAlertas alertas={saude.alertas} />
       </section>
 
       {/* Metricas */}
@@ -104,31 +165,26 @@ export default async function PaginaVisaoGeral() {
           valor={dados.aprovacoesPendentes}
         />
         <Metrica
-          rotulo="Saidas pendentes"
-          valor={dados.saidasPendentes}
-          detalhe={`${dados.enviosIncertos} incerta(s)`}
-          tom={dados.enviosIncertos > 0 ? "etiqueta-alerta" : undefined}
-        />
-        <Metrica rotulo="Tarefas concluidas" valor={dados.tarefasConcluidas} />
-        <Metrica
-          rotulo="Leases vencidas"
-          valor={dados.leasesVencidos?.tarefas_bloqueadas ?? 0}
-          detalhe="tarefas bloqueadas por lease"
-          tom={
-            (dados.leasesVencidos?.tarefas_bloqueadas ?? 0) > 0
-              ? "etiqueta-alerta"
-              : undefined
-          }
+          rotulo="Tempo de resposta (mediana)"
+          valor={formatarDuracao(tempos.resumo.medianaTotalS)}
+          detalhe={`90% em ate ${formatarDuracao(tempos.resumo.p90TotalS)} (${tempos.resumo.amostras} msgs)`}
         />
         <Metrica
-          rotulo="Envios incertos"
-          valor={dados.leasesVencidos?.envios_incertos ?? dados.enviosIncertos}
-          detalhe="aguardando reconciliacao"
-          tom={
-            (dados.leasesVencidos?.envios_incertos ?? 0) > 0
-              ? "etiqueta-erro"
-              : undefined
-          }
+          rotulo="Respostas enviadas (24 h)"
+          valor={saude.saidas.enviadas24h}
+          detalhe={`${saude.atalhos24h} respondida(s) pelo atalho`}
+        />
+        <Metrica
+          rotulo="Respostas paradas"
+          valor={saude.saidas.paradas.total}
+          detalhe="sem envio ha mais de 1 h"
+          tom={saude.saidas.paradas.total > 0 ? "etiqueta-alerta" : undefined}
+        />
+        <Metrica
+          rotulo="Reservas vencidas"
+          valor={dados.leasesVencidas}
+          detalhe="pedido em execucao sem worker"
+          tom={dados.leasesVencidas > 0 ? "etiqueta-erro" : undefined}
         />
       </section>
 

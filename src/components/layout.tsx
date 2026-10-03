@@ -5,6 +5,7 @@ import type { Usuario } from "@/lib/auth";
 const SECOES = [
   { href: "/", rotulo: "Visao geral" },
   { href: "/servico", rotulo: "Servico e worker" },
+  { href: "/fila", rotulo: "Fila e entregas" },
   { href: "/conversas", rotulo: "Conversas" },
   { href: "/tarefas", rotulo: "Tarefas" },
   { href: "/aprovacoes", rotulo: "Aprovacoes" },

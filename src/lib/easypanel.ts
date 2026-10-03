@@ -1,6 +1,12 @@
 import "server-only";
 
 import { servidor } from "@/lib/env";
+import {
+  extrairCommit,
+  extrairParametros,
+  type CommitImplantado,
+  type ParametroServico,
+} from "@/lib/servico-parse";
 
 /**
  * Leitura do EasyPanel. SOMENTE LEITURA.
@@ -28,6 +34,10 @@ export type StatusEasyPanel = {
   porta: number | null;
   cpu: number | null;
   memoriaMb: number | null;
+  /** Commit que o container esta rodando: mostra qual fase do worker-agent esta no ar. */
+  commit: CommitImplantado | null;
+  /** So parametros de comportamento do worker, de uma lista fechada. Nunca segredos. */
+  parametros: ParametroServico[];
   erro?: string;
 };
 
@@ -131,6 +141,8 @@ export async function statusServico(): Promise<StatusEasyPanel> {
       porta: null,
       cpu: null,
       memoriaMb: null,
+      commit: null,
+      parametros: [],
       erro: erro ?? "resposta vazia do EasyPanel",
     };
   }
@@ -165,6 +177,10 @@ export async function statusServico(): Promise<StatusEasyPanel> {
     porta,
     cpu,
     memoriaMb: memoria,
+    // `texto` traz o env completo do servico. Estas duas funcoes devolvem so
+    // o commit e uma lista fechada de parametros; o texto bruto morre aqui.
+    commit: extrairCommit(texto),
+    parametros: extrairParametros(texto),
   };
 }
 
@@ -214,6 +230,76 @@ export async function healthDoServico(base?: string): Promise<{
       erro: mascaraPorMotivo(
         erro instanceof Error ? erro.message : String(erro),
       ),
+    };
+  }
+}
+
+export type DependenciasDoServico = {
+  /** O servico respondeu ao /ready (mesmo com 503). */
+  alcancou: boolean;
+  /** 200 = pronto; 503 = alguma dependencia fora. */
+  pronto: boolean;
+  supabase: boolean | null;
+  worker: boolean | null;
+  evolution: boolean | null;
+  latenciaMs: number | null;
+  erro?: string;
+};
+
+/**
+ * Le o /ready do worker-agent: diz se o banco e o worker estao de pe.
+ *
+ * O /health so prova que o processo responde. O /ready e o que o EasyPanel
+ * usa para decidir se manda trafego, e e onde aparece "worker parado" ou
+ * "Supabase fora". Um 503 aqui nao e erro de leitura: e a resposta.
+ *
+ * So os tres indicadores booleanos sao repassados. O corpo traz tambem
+ * mensagens de erro de infraestrutura (`erro_supabase`), que podem conter
+ * detalhes internos e por isso nao saem do servidor.
+ */
+export async function prontidaoDoServico(base?: string): Promise<DependenciasDoServico> {
+  const { texto } = await chamarMcp("execute_query", "getPrimaryDomain", {
+    projectName: PROJETO,
+    serviceName: SERVICO,
+  });
+  const host = texto?.match(/"host":\s*"([^"]+)"/)?.[1];
+  const alvo = base ?? (host ? `https://${host}` : null);
+
+  const vazio: DependenciasDoServico = {
+    alcancou: false,
+    pronto: false,
+    supabase: null,
+    worker: null,
+    evolution: null,
+    latenciaMs: null,
+  };
+  if (!alvo) return { ...vazio, erro: "dominio do servico nao encontrado" };
+
+  const inicio = Date.now();
+  try {
+    const resposta = await fetch(`${alvo}/ready`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: "no-store",
+    });
+    const latenciaMs = Date.now() - inicio;
+    const corpo = (await resposta.json().catch(() => null)) as {
+      dependencias?: Record<string, unknown>;
+    } | null;
+    const dep = corpo?.dependencias ?? {};
+    const booleano = (v: unknown) => (typeof v === "boolean" ? v : null);
+
+    return {
+      alcancou: true,
+      pronto: resposta.ok,
+      supabase: booleano(dep.supabase),
+      worker: booleano(dep.worker),
+      evolution: booleano(dep.evolution),
+      latenciaMs,
+    };
+  } catch (erro) {
+    return {
+      ...vazio,
+      erro: mascaraPorMotivo(erro instanceof Error ? erro.message : String(erro)),
     };
   }
 }
