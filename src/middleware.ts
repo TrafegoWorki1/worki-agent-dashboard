@@ -70,6 +70,10 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico)$).*)",
+    // A API de aprovacao NAO passa pelo middleware: ele redirecionaria
+    // quem nao tem sessao para /login, e a rota responderia 307 em vez
+    // do 401 com JSON que o client precisa ler. A rota faz a propria
+    // checagem em `verificarAcesso()`.
+    "/((?!api/aprovacoes|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico)$).*)",
   ],
 };
