@@ -1,0 +1,238 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ */
+/* Tokens                                                               */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --fundo: #0b0c0e;
+  --superficie: #14161a;
+  --superficie-2: #1c1f25;
+  --borda: #2a2e37;
+  --texto: #e8eaed;
+  --texto-fraco: #9aa1ad;
+  --texto-tenue: #6b7280;
+  --acento: #d7a84b;
+  --ok: #3fb950;
+  --alerta: #d29922;
+  --erro: #f85149;
+  --info: #58a6ff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --fundo: #f7f8fa;
+    --superficie: #ffffff;
+    --superficie-2: #f0f2f5;
+    --borda: #dfe3e8;
+    --texto: #14161a;
+    --texto-fraco: #57606a;
+    --texto-tenue: #8b949e;
+  }
+}
+
+* {
+  border-color: var(--borda);
+}
+
+body {
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+code,
+pre,
+.mono {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ */
+/* Componentes                                                         */
+/* ------------------------------------------------------------------ */
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+}
+
+.cartao-titulo {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--texto-fraco);
+}
+
+.metrica-valor {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.etiqueta-ok {
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+}
+
+.etiqueta-alerta {
+  background: color-mix(in srgb, var(--alerta) 15%, transparent);
+  color: var(--alerta);
+  border-color: color-mix(in srgb, var(--alerta) 35%, transparent);
+}
+
+.etiqueta-erro {
+  background: color-mix(in srgb, var(--erro) 15%, transparent);
+  color: var(--erro);
+  border-color: color-mix(in srgb, var(--erro) 35%, transparent);
+}
+
+.etiqueta-neutra {
+  background: var(--superficie-2);
+  color: var(--texto-fraco);
+  border-color: var(--borda);
+}
+
+.etiqueta-info {
+  background: color-mix(in srgb, var(--info) 15%, transparent);
+  color: var(--info);
+  border-color: color-mix(in srgb, var(--info) 35%, transparent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Navegacao                                                           */
+/* ------------------------------------------------------------------ */
+
+.nav-item {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--texto-fraco);
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.nav-item:hover {
+  background: var(--superficie-2);
+  color: var(--texto);
+}
+
+.nav-item-ativo {
+  background: var(--superficie-2);
+  color: var(--acento);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tabelas                                                             */
+/* ------------------------------------------------------------------ */
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabela th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-tenue);
+  border-bottom: 1px solid var(--borda);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--borda) 50%, transparent);
+  vertical-align: top;
+}
+
+.tabela tr:last-child td {
+  border-bottom: none;
+}
+
+.tabela tbody tr:hover {
+  background: color-mix(in srgb, var(--superficie-2) 60%, transparent);
+}
+
+/* Trunca sem quebrar o layout de tabela. */
+.truncar {
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Formulario                                                          */
+/* ------------------------------------------------------------------ */
+
+.campo {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  color: var(--texto);
+  font-size: 0.9375rem;
+}
+
+.campo:focus {
+  outline: 2px solid color-mix(in srgb, var(--acento) 60%, transparent);
+  outline-offset: 1px;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid var(--borda);
+  background: var(--superficie-2);
+  color: var(--texto);
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.botao:hover:not(:disabled) {
+  border-color: var(--acento);
+}
+
+.botao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.botao-primario {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #14161a;
+}
+
+.botao-primario:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--acento) 85%, #fff);
+}
