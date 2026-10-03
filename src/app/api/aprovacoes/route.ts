@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { exigirAcesso } from "@/lib/auth";
+import { mensagemDeRecusa, verificarAcesso } from "@/lib/auth";
 import { aprovarAcao } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -17,19 +17,22 @@ export const dynamic = "force-dynamic";
  * assumir o nome de outro aprovador.
  */
 export async function POST(req: Request) {
-  // exigirAcesso() redireciona quando nega. Numa Route Handler isso
-  // estouraria como excecao de redirect, entao o padrao e try/catch:
-  // sem sessao valida, cai no catch e vira 401 — nunca 200 com a tela
-  // de login no corpo.
-  let usuario;
-  try {
-    usuario = await exigirAcesso();
-  } catch {
+  // `exigirAcesso()` nao serve aqui: ele chama `redirect()`, que o Next
+  // relanca como erro interno mesmo dentro de um try/catch — o handler
+  // responderia 307 em vez do 401 que uma API precisa devolver.
+  //
+  // `verificarAcesso()` e a mesma checagem sem o redirect: sessao valida
+  // no Supabase e e-mail na allowlist. Quem nega, devolve 401.
+  const acesso = await verificarAcesso();
+
+  if (!acesso.autorizado) {
     return NextResponse.json(
-      { ok: false, erro: "Nao autorizado." },
+      { ok: false, erro: mensagemDeRecusa(acesso.motivo) },
       { status: 401 },
     );
   }
+
+  const usuario = acesso.usuario;
 
   let corpo: { acaoId?: unknown; palavra?: unknown };
   try {
