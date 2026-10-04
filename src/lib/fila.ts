@@ -188,7 +188,10 @@ export function resumirSaidas(saidas: Saida[], agora: Date): ResumoSaidas {
   for (const s of saidas) {
     const criada = Date.parse(s.criado_em);
     if (s.status === "enviada") {
-      const quando = Date.parse(s.enviado_em ?? s.criado_em);
+      // So conta como "enviada" a que tem hora de envio. Resposta antiga
+      // encerrada a mao (status enviada, sem enviado_em) nao foi entregue
+      // e nao pode inflar o numero de enviadas.
+      const quando = s.enviado_em ? Date.parse(s.enviado_em) : Number.NaN;
       if (!Number.isNaN(quando) && t - quando <= UM_DIA_MS) resumo.enviadas24h += 1;
       continue;
     }

@@ -195,6 +195,18 @@ describe("formatarDuracao", () => {
 });
 
 describe("resumirSaidas", () => {
+  it("resposta encerrada a mao (enviada sem enviado_em) nao conta como enviada", () => {
+    const r = resumirSaidas(
+      [
+        saida({ id: "1", status: "enviada", enviado_em: iso(5) }),
+        saida({ id: "2", status: "enviada", enviado_em: null, criado_em: iso(60 * 3) }),
+      ],
+      AGORA,
+    );
+    expect(r.enviadas24h).toBe(1);
+    expect(r.paradas.total).toBe(0);
+  });
+
   it("conta enviadas das ultimas 24 h e separa as paradas das recentes", () => {
     const r = resumirSaidas(
       [
