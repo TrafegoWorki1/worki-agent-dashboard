@@ -32,23 +32,26 @@ export default async function PaginaLogin({
     const cfg = servidor();
     if (cfg.emailsPermitidos.length === 0) {
       erroDeConfiguracao =
-        "DASHBOARD_ALLOWED_EMAILS esta vazio. Sem ele ninguem entra no painel. " +
-        "Configure a variavel na Vercel com os e-mails autorizados, separados por virgula.";
+        "DASHBOARD_ALLOWED_EMAILS está vazio. Sem ele ninguém entra no painel. " +
+        "Configure a variavel na Vercel com os e-mails autorizados, separados por vírgula.";
     }
   } catch (erro) {
     erroDeConfiguracao =
       erro instanceof ErroDeConfiguracao
-        ? `Faltam variaveis de ambiente: ${erro.variaveis.join(", ")}.`
-        : "Configuracao do painel invalida. Verifique as variaveis na Vercel.";
+        ? `Faltam variáveis de ambiente: ${erro.variaveis.join(", ")}.`
+        : "Configuração do painel inválida. Verifique as variáveis na Vercel.";
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
+        <div className="mb-7 flex flex-col items-center text-center">
+          <div className="marca mb-4" style={{ width: "3rem", height: "3rem", fontSize: "1.25rem" }}>
+            W
+          </div>
           <h1 className="text-xl font-bold tracking-tight">Worki Agent</h1>
           <p className="mt-1 text-sm text-[var(--texto-fraco)]">
-            Painel de operacao do Agente Dominante
+            Painel de operação do agente
           </p>
         </div>
 
@@ -56,19 +59,25 @@ export default async function PaginaLogin({
           {erroDeConfiguracao ? (
             <div className="space-y-3 text-sm">
               <p className="text-[var(--erro)]">
-                O painel nao esta pronto para uso.
+                O painel não está pronto para uso.
               </p>
               <p className="text-[var(--texto-fraco)]">{erroDeConfiguracao}</p>
             </div>
           ) : (
             <>
               <LoginForm
-                mensagem={busca.erro ?? mensagemDeRecusa(resultado.motivo)}
+                // "Sem sessao" e o estado normal de quem acabou de chegar: nao e erro.
+                mensagem={
+                  busca.erro ??
+                  (resultado.motivo === "sem-sessao"
+                    ? undefined
+                    : mensagemDeRecusa(resultado.motivo))
+                }
               />
               <p className="mt-4 text-xs leading-relaxed text-[var(--texto-tenue)]">
-                O acesso e restrito aos e-mails autorizados na configuracao do
-                painel. Estar logado no Supabase nao e suficiente: o e-mail
-                precisa estar na lista.
+                O acesso é restrito aos e-mails autorizados na configuração do
+                painel. Estar logado no Supabase não basta: o e-mail precisa
+                estar na lista.
               </p>
             </>
           )}
@@ -76,8 +85,8 @@ export default async function PaginaLogin({
 
         {!serviceRoleConfigurada() && !erroDeConfiguracao && (
           <p className="mt-4 text-center text-xs text-[var(--alerta)]">
-            SUPABASE_SERVICE_ROLE_KEY nao configurada: o login funciona, mas as
-            telas vao falhar.
+            SUPABASE_SERVICE_ROLE_KEY não configurada: o login funciona, mas as
+            telas vão falhar.
           </p>
         )}
       </div>

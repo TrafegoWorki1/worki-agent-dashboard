@@ -4,6 +4,8 @@ import {
   PARAMETROS,
   extrairCommit,
   extrairParametros,
+  mensagemDeErroDoServico,
+  pareceErroEmVezDeLog,
   valorEmVigor,
 } from "../src/lib/servico-parse";
 
@@ -115,5 +117,31 @@ describe("extrairParametros", () => {
     const p = porChave(bruto);
     expect(p.WORKI_WORKER_CONCURRENCY.valor).toBe("2");
     expect(p.WORKI_DRY_RUN.valor).toBe("0");
+  });
+});
+
+describe("erro do EasyPanel no lugar do log", () => {
+  it("reconhece o erro cru que a tela mostrava como se fosse log", () => {
+    expect(pareceErroEmVezDeLog("fetch failed (BAD_REQUEST, HTTP 400)")).toBe(true);
+    expect(pareceErroEmVezDeLog("Error: algo deu errado")).toBe(true);
+  });
+
+  it("nao trata log de verdade como erro", () => {
+    const log = "2026-10-03 INFO worker iniciado\n2026-10-03 INFO fila vazia";
+    expect(pareceErroEmVezDeLog(log)).toBe(false);
+    expect(pareceErroEmVezDeLog("2026-10-03 INFO worker iniciado")).toBe(false);
+    expect(pareceErroEmVezDeLog("")).toBe(false);
+  });
+
+  it("traduz para causa provavel e acao, sem o texto tecnico", () => {
+    const m400 = mensagemDeErroDoServico("fetch failed (BAD_REQUEST, HTTP 400)");
+    expect(m400).toMatch(/logs/);
+    expect(m400).not.toMatch(/BAD_REQUEST|fetch failed/);
+
+    expect(mensagemDeErroDoServico("EasyPanel respondeu 401")).toMatch(/token/);
+    expect(mensagemDeErroDoServico("EasyPanel respondeu 503")).toMatch(/HTTP 503/);
+    expect(mensagemDeErroDoServico("EasyPanel inacessivel: aborted")).toMatch(/a tempo/);
+    expect(mensagemDeErroDoServico("EASYPANEL_API_TOKEN nao configurada.")).toMatch(/Vercel/);
+    expect(mensagemDeErroDoServico(null)).toMatch(/Não foi possível/);
   });
 });
